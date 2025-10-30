@@ -1,32 +1,78 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Тест Web App</title>
+    <title>Билеты на Рождественский Бал</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { padding: 20px; font-family: Arial, sans-serif; }
+        .form-group { margin-bottom: 15px; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; }
+        .btn { background: #0088cc; color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-size: 16px; }
+    </style>
 </head>
 <body>
-    <div style="padding: 20px;">
-        <h2>Тест Web App</h2>
-        <button onclick="sendTestData()">Отправить тестовые данные</button>
+    <div class="container">
+        <h2>🎄 Покупка билетов</h2>
+        
+        <form id="orderForm">
+            <div class="form-group">
+                <input type="text" name="name" placeholder="Ваше имя" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="lastname" placeholder="Ваша фамилия" required>
+            </div>
+            <div class="form-group">
+                <input type="tel" name="phone" placeholder="Телефон +7XXXXXXXXXX" required pattern="\+7[0-9]{10}">
+            </div>
+            <div class="form-group">
+                <select name="tickets" required>
+                    <option value="">Количество билетов</option>
+                    <option value="1">1 билет</option>
+                    <option value="2">2 билета</option>
+                    <option value="3">3 билета</option>
+                </select>
+            </div>
+            <button type="submit" class="btn">🎫 Купить билеты</button>
+        </form>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         
-        function sendTestData() {
-            const testData = {
-                name: "Тест",
-                lastname: "Тестов",
-                phone: "+79123456789",
-                tickets: "1"
-            };
-            
-            tg.sendData(JSON.stringify(testData));
-            tg.close();
-        }
-        
+        // ОБЯЗАТЕЛЬНО для BotFather кнопки!
         tg.expand();
         tg.ready();
+        
+        // Проверяем, откуда открыт Web App
+        const urlParams = new URLSearchParams(window.location.search);
+        const source = urlParams.get('startapp');
+        console.log('Web App opened from:', source || 'unknown');
+        
+        document.getElementById('orderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const orderData = {
+                name: formData.get('name'),
+                lastname: formData.get('lastname'),
+                phone: formData.get('phone'),
+                tickets: formData.get('tickets')
+            };
+            
+            console.log('Sending data:', orderData);
+            
+            // КРИТИЧЕСКИ ВАЖНО для BotFather кнопки!
+            tg.sendData(JSON.stringify(orderData));
+            
+            // Закрываем только после отправки
+            setTimeout(() => {
+                tg.close();
+            }, 1000);
+        });
+        
+        // Дополнительная инициализация
+        tg.MainButton.setText("Купить билеты");
+        tg.MainButton.show();
     </script>
 </body>
 </html>
