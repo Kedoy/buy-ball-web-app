@@ -4,70 +4,91 @@
     <title>Админ панель - Рождественский Бал</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial; padding: 20px; max-width: 600px; margin: 0 auto; }
+        body { font-family: Arial; padding: 20px; max-width: 500px; margin: 0 auto; }
         .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 10px; }
-        button { background: #0088cc; color: white; padding: 10px 15px; border: none; border-radius: 5px; margin: 5px; cursor: pointer; }
-        input, select { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
-        .stats { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+        button { background: #0088cc; color: white; padding: 10px; border: none; border-radius: 5px; margin: 5px; cursor: pointer; width: 100%; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .stats { background: #f0f8ff; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { color: green; padding: 10px; }
+        .error { color: red; padding: 10px; }
+        .loading { color: #666; padding: 10px; }
     </style>
 </head>
 <body>
     <h1>🎪 Админ панель</h1>
     
+    <div id="status"></div>
+    
     <div class="section">
         <h3>📊 Статистика</h3>
-        <div id="stats" class="stats">Загрузка...</div>
-        <button onclick="loadStats()">Обновить статистику</button>
+        <div id="stats" class="stats">Нажмите "Обновить статистику"</div>
+        <button onclick="loadStats()">🔄 Обновить статистику</button>
     </div>
 
     <div class="section">
         <h3>🎫 Управление билетами</h3>
         <input type="number" id="ticketsAmount" placeholder="Новое количество билетов" min="0">
-        <button onclick="updateTickets()">Обновить количество</button>
+        <button onclick="updateTickets()">📝 Обновить количество</button>
+        <div id="ticketsResult"></div>
     </div>
 
     <div class="section">
         <h3>👥 Ручная регистрация</h3>
         <input type="text" id="manualName" placeholder="Имя">
         <input type="text" id="manualLastname" placeholder="Фамилия">
-        <input type="tel" id="manualPhone" placeholder="Телефон +7...">
+        <input type="tel" id="manualPhone" placeholder="Телефон +7XXX...">
         <input type="number" id="manualTickets" placeholder="Количество билетов" min="1">
-        <button onclick="manualRegister()">Добавить участника</button>
+        <button onclick="manualRegister()">➕ Добавить участника</button>
+        <div id="manualResult"></div>
     </div>
 
     <div class="section">
         <h3>📥 Экспорт данных</h3>
-        <button onclick="exportData()">Скачать Excel файл</button>
-        <button onclick="viewUsers()">Просмотреть список</button>
+        <button onclick="exportData()">📊 Скачать Excel</button>
+        <button onclick="viewUsers()">👀 Просмотреть список</button>
+        <div id="exportResult"></div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
+        
+        // Отключаем автоматическое закрытие
+        tg.disableClosingConfirmation();
 
-        // Загрузка статистики при открытии
-        loadStats();
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = message;
+            statusEl.className = type;
+            setTimeout(() => statusEl.innerHTML = '', 3000);
+        }
 
-        async function loadStats() {
-            document.getElementById('stats').innerHTML = 'Загрузка...';
+        function loadStats() {
+            document.getElementById('stats').innerHTML = '<div class="loading">Загрузка статистики...</div>';
             const data = {
                 action: 'get_stats',
                 admin_id: tg.initDataUnsafe.user?.id
             };
             tg.sendData(JSON.stringify(data));
+            // НЕ ЗАКРЫВАЕМ Web App!
         }
 
         function updateTickets() {
             const amount = document.getElementById('ticketsAmount').value;
-            if (!amount) return alert('Введите количество');
+            if (!amount) {
+                showStatus('Введите количество билетов', 'error');
+                return;
+            }
             
+            document.getElementById('ticketsResult').innerHTML = '<div class="loading">Обновление...</div>';
             const data = {
                 action: 'update_tickets',
                 amount: parseInt(amount),
                 admin_id: tg.initDataUnsafe.user?.id
             };
             tg.sendData(JSON.stringify(data));
+            // НЕ ЗАКРЫВАЕМ Web App!
         }
 
         function manualRegister() {
@@ -77,9 +98,11 @@
             const tickets = document.getElementById('manualTickets').value;
 
             if (!name || !lastname || !phone || !tickets) {
-                return alert('Заполните все поля');
+                showStatus('Заполните все поля', 'error');
+                return;
             }
 
+            document.getElementById('manualResult').innerHTML = '<div class="loading">Добавление участника...</div>';
             const data = {
                 action: 'manual_register',
                 name: name,
@@ -89,23 +112,43 @@
                 admin_id: tg.initDataUnsafe.user?.id
             };
             tg.sendData(JSON.stringify(data));
+            // НЕ ЗАКРЫВАЕМ Web App!
+            
+            // Очистка полей после отправки
+            document.getElementById('manualName').value = '';
+            document.getElementById('manualLastname').value = '';
+            document.getElementById('manualPhone').value = '';
+            document.getElementById('manualTickets').value = '';
         }
 
         function exportData() {
+            document.getElementById('exportResult').innerHTML = '<div class="loading">Подготовка файла...</div>';
             const data = {
                 action: 'export_data',
                 admin_id: tg.initDataUnsafe.user?.id
             };
             tg.sendData(JSON.stringify(data));
+            // НЕ ЗАКРЫВАЕМ Web App!
         }
 
         function viewUsers() {
+            document.getElementById('exportResult').innerHTML = '<div class="loading">Загрузка списка...</div>';
             const data = {
                 action: 'view_users',
                 admin_id: tg.initDataUnsafe.user?.id
             };
             tg.sendData(JSON.stringify(data));
+            // НЕ ЗАКРЫВАЕМ Web App!
+        }
+        
+        // Кнопка для ручного закрытия (опционально)
+        function closeApp() {
+            tg.close();
         }
     </script>
+    
+    <div style="margin-top: 20px; text-align: center;">
+        <button onclick="closeApp()" style="background: #666; width: auto;">Закрыть панель</button>
+    </div>
 </body>
 </html>
