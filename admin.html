@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Админ панель - Рождественский Бал</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 10px; }
+        button { background: #0088cc; color: white; padding: 10px 15px; border: none; border-radius: 5px; margin: 5px; cursor: pointer; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .stats { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🎪 Админ панель</h1>
+    
+    <div class="section">
+        <h3>📊 Статистика</h3>
+        <div id="stats" class="stats">Загрузка...</div>
+        <button onclick="loadStats()">Обновить статистику</button>
+    </div>
+
+    <div class="section">
+        <h3>🎫 Управление билетами</h3>
+        <input type="number" id="ticketsAmount" placeholder="Новое количество билетов" min="0">
+        <button onclick="updateTickets()">Обновить количество</button>
+    </div>
+
+    <div class="section">
+        <h3>👥 Ручная регистрация</h3>
+        <input type="text" id="manualName" placeholder="Имя">
+        <input type="text" id="manualLastname" placeholder="Фамилия">
+        <input type="tel" id="manualPhone" placeholder="Телефон +7...">
+        <input type="number" id="manualTickets" placeholder="Количество билетов" min="1">
+        <button onclick="manualRegister()">Добавить участника</button>
+    </div>
+
+    <div class="section">
+        <h3>📥 Экспорт данных</h3>
+        <button onclick="exportData()">Скачать Excel файл</button>
+        <button onclick="viewUsers()">Просмотреть список</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        // Загрузка статистики при открытии
+        loadStats();
+
+        async function loadStats() {
+            document.getElementById('stats').innerHTML = 'Загрузка...';
+            const data = {
+                action: 'get_stats',
+                admin_id: tg.initDataUnsafe.user?.id
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function updateTickets() {
+            const amount = document.getElementById('ticketsAmount').value;
+            if (!amount) return alert('Введите количество');
+            
+            const data = {
+                action: 'update_tickets',
+                amount: parseInt(amount),
+                admin_id: tg.initDataUnsafe.user?.id
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function manualRegister() {
+            const name = document.getElementById('manualName').value;
+            const lastname = document.getElementById('manualLastname').value;
+            const phone = document.getElementById('manualPhone').value;
+            const tickets = document.getElementById('manualTickets').value;
+
+            if (!name || !lastname || !phone || !tickets) {
+                return alert('Заполните все поля');
+            }
+
+            const data = {
+                action: 'manual_register',
+                name: name,
+                lastname: lastname,
+                phone: phone,
+                tickets: parseInt(tickets),
+                admin_id: tg.initDataUnsafe.user?.id
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function exportData() {
+            const data = {
+                action: 'export_data',
+                admin_id: tg.initDataUnsafe.user?.id
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function viewUsers() {
+            const data = {
+                action: 'view_users',
+                admin_id: tg.initDataUnsafe.user?.id
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+    </script>
+</body>
+</html>
