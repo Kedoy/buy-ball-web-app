@@ -1,54 +1,78 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Тест Web App</title>
+    <title>Покупка билетов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { padding: 20px; font-family: Arial; }
-        .status { padding: 10px; margin: 10px 0; }
-        .success { background: green; color: white; }
-        .error { background: red; color: white; }
-    </style>
+    <style>/* ваши стили */</style>
 </head>
 <body>
-    <h1>🎯 Тест Web App</h1>
-    
-    <div id="status"></div>
-    
-    <button onclick="sendTest()">Отправить тест</button>
-    
+    <div id="app">
+        <h2>🎫 Покупка билетов</h2>
+        
+        <form id="orderForm">
+            <input type="text" name="name" placeholder="Имя" required>
+            <input type="text" name="lastname" placeholder="Фамилия" required>
+            <input type="tel" name="phone" placeholder="Телефон +7..." required>
+            <select name="tickets" required>
+                <option value="">Количество билетов</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+            <button type="submit">Купить билеты</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
-        const status = document.getElementById('status');
+        const API_BASE = 'https://kedoy.github.io/buy-ball-web-app'; // ЗАМЕНИТЕ на ваш домен
         
-        // Инициализация
+        // Инициализация Web App
         tg.expand();
         tg.ready();
         
-        // Проверяем данные Telegram
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            status.innerHTML = `<div class="success">
-                ✅ Web App работает!<br>
-                Пользователь: ${tg.initDataUnsafe.user.first_name}<br>
-                ID: ${tg.initDataUnsafe.user.id}
-            </div>`;
-        } else {
-            status.innerHTML = `<div class="error">
-                ❌ Данные Telegram не получены<br>
-                initData: ${JSON.stringify(tg.initDataUnsafe)}
-            </div>`;
-        }
-        
-        function sendTest() {
-            const testData = {
-                action: 'test',
-                message: 'Привет из Web App!',
-                user_id: tg.initDataUnsafe?.user?.id
+        document.getElementById('orderForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const tgUser = tg.initDataUnsafe?.user;
+            
+            const orderData = {
+                name: formData.get('name'),
+                lastname: formData.get('lastname'),
+                phone: formData.get('phone'),
+                tickets: parseInt(formData.get('tickets')),
+                telegram_id: tgUser?.id || null,
+                username: tgUser?.username || ''
             };
             
-            tg.sendData(JSON.stringify(testData));
-            status.innerHTML += `<div class="success">📨 Данные отправлены!</div>`;
-        }
+            try {
+                const response = await fetch(`${API_BASE}/order-tickets`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = 
+                        `<div style="color: green; padding: 10px;">✅ ${result.message}</div>`;
+                    // Очищаем форму
+                    this.reset();
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        `<div style="color: red; padding: 10px;">❌ ${result.detail}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<div style="color: red; padding: 10px;">❌ Ошибка сети: ${error.message}</div>`;
+            }
+        });
     </script>
 </body>
 </html>
