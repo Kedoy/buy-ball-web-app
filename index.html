@@ -1,78 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Билеты на Рождественский Бал</title>
+    <title>Тест Web App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { padding: 20px; font-family: Arial, sans-serif; }
-        .form-group { margin-bottom: 15px; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; }
-        .btn { background: #0088cc; color: white; padding: 15px; border: none; border-radius: 8px; width: 100%; font-size: 16px; }
+        body { padding: 20px; font-family: Arial; }
+        .status { padding: 10px; margin: 10px 0; }
+        .success { background: green; color: white; }
+        .error { background: red; color: white; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>🎄 Покупка билетов</h2>
-        
-        <form id="orderForm">
-            <div class="form-group">
-                <input type="text" name="name" placeholder="Ваше имя" required>
-            </div>
-            <div class="form-group">
-                <input type="text" name="lastname" placeholder="Ваша фамилия" required>
-            </div>
-            <div class="form-group">
-                <input type="tel" name="phone" placeholder="Телефон +7XXXXXXXXXX" required pattern="\+7[0-9]{10}">
-            </div>
-            <div class="form-group">
-                <select name="tickets" required>
-                    <option value="">Количество билетов</option>
-                    <option value="1">1 билет</option>
-                    <option value="2">2 билета</option>
-                    <option value="3">3 билета</option>
-                </select>
-            </div>
-            <button type="submit" class="btn">🎫 Купить билеты</button>
-        </form>
-    </div>
-
+    <h1>🎯 Тест Web App</h1>
+    
+    <div id="status"></div>
+    
+    <button onclick="sendTest()">Отправить тест</button>
+    
     <script>
         const tg = window.Telegram.WebApp;
+        const status = document.getElementById('status');
         
-        // ОБЯЗАТЕЛЬНО для BotFather кнопки!
+        // Инициализация
         tg.expand();
         tg.ready();
         
-        // Проверяем, откуда открыт Web App
-        const urlParams = new URLSearchParams(window.location.search);
-        const source = urlParams.get('startapp');
-        console.log('Web App opened from:', source || 'unknown');
+        // Проверяем данные Telegram
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            status.innerHTML = `<div class="success">
+                ✅ Web App работает!<br>
+                Пользователь: ${tg.initDataUnsafe.user.first_name}<br>
+                ID: ${tg.initDataUnsafe.user.id}
+            </div>`;
+        } else {
+            status.innerHTML = `<div class="error">
+                ❌ Данные Telegram не получены<br>
+                initData: ${JSON.stringify(tg.initDataUnsafe)}
+            </div>`;
+        }
         
-        document.getElementById('orderForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const orderData = {
-                name: formData.get('name'),
-                lastname: formData.get('lastname'),
-                phone: formData.get('phone'),
-                tickets: formData.get('tickets')
+        function sendTest() {
+            const testData = {
+                action: 'test',
+                message: 'Привет из Web App!',
+                user_id: tg.initDataUnsafe?.user?.id
             };
             
-            console.log('Sending data:', orderData);
-            
-            // КРИТИЧЕСКИ ВАЖНО для BotFather кнопки!
-            tg.sendData(JSON.stringify(orderData));
-            
-            // Закрываем только после отправки
-            setTimeout(() => {
-                tg.close();
-            }, 1000);
-        });
-        
-        // Дополнительная инициализация
-        tg.MainButton.setText("Купить билеты");
-        tg.MainButton.show();
+            tg.sendData(JSON.stringify(testData));
+            status.innerHTML += `<div class="success">📨 Данные отправлены!</div>`;
+        }
     </script>
 </body>
 </html>
