@@ -96,12 +96,6 @@
                 async function loadStats() {
                     loading.value = true;
                     try {
-                        const user = tg.initDataUnsafe?.user;
-                        if (!user) {
-                            showMessage('❌ Пользователь не определен', 'error');
-                            return;
-                        }
-
                         console.log('🔄 Загрузка статистики...');
                         const response = await fetch(`${API_BASE}/stats?admin_id=${user.id}`);
                         
