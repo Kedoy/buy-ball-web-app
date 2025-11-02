@@ -5,51 +5,68 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        body { font-family: Arial; margin: 0; padding: 20px; }
+        body { font-family: Arial; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
         .section { margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 10px; }
-        button { background: #0088cc; color: white; padding: 10px; border: none; border-radius: 5px; margin: 5px; cursor: pointer; }
+        button { background: #0088cc; color: white; padding: 10px 15px; border: none; border-radius: 5px; margin: 5px; cursor: pointer; }
         input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .stats-item { margin: 5px 0; padding: 8px; background: #f8f9fa; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div id="app">
-        <h1>🎪 Админ панель</h1>
-        
-        <div class="section">
-            <h3>📊 Статистика</h3>
-            <div v-if="stats">
-                <p>🎫 Билетов доступно: {{ stats.total_tickets }}</p>
-                <p>👥 Участников: {{ stats.total_users }}</p>
-                <p>💰 Продано: {{ stats.total_sold }} шт.</p>
-                <p>💸 Выручка: {{ stats.revenue }} руб.</p>
+        <div class="container">
+            <h1>🎪 Админ панель</h1>
+            
+            <div v-if="message" :class="['message', messageType]">
+                {{ message }}
             </div>
-            <button @click="loadStats">🔄 Обновить</button>
-        </div>
+            
+            <div class="section">
+                <h3>📊 Статистика</h3>
+                <div v-if="stats && stats.data">
+                    <div class="stats-item">🎫 Билетов доступно: <strong>{{ stats.data.total_tickets }}</strong></div>
+                    <div class="stats-item">👥 Участников: <strong>{{ stats.data.total_users }}</strong></div>
+                    <div class="stats-item">💰 Продано: <strong>{{ stats.data.total_sold }} шт.</strong></div>
+                    <div class="stats-item">💸 Выручка: <strong>{{ stats.data.revenue }} руб.</strong></div>
+                </div>
+                <div v-else-if="loading">Загрузка статистики...</div>
+                <div v-else>Нажмите "Обновить" для загрузки статистики</div>
+                <button @click="loadStats" :disabled="loading">🔄 Обновить</button>
+            </div>
 
-        <div class="section">
-            <h3>🎫 Управление билетами</h3>
-            <input v-model="newTicketsAmount" type="number" placeholder="Новое количество" min="0">
-            <button @click="updateTickets">📝 Обновить</button>
-        </div>
+            <div class="section">
+                <h3>🎫 Управление билетами</h3>
+                <input v-model="newTicketsAmount" type="number" placeholder="Новое количество" min="0">
+                <button @click="updateTickets" :disabled="!newTicketsAmount">📝 Обновить</button>
+            </div>
 
-        <div class="section">
-            <h3>👥 Ручная регистрация</h3>
-            <input v-model="manualData.name" placeholder="Имя">
-            <input v-model="manualData.lastname" placeholder="Фамилия">
-            <input v-model="manualData.phone" placeholder="Телефон +7...">
-            <input v-model="manualData.tickets" type="number" placeholder="Билеты" min="1">
-            <button @click="manualRegister">➕ Добавить</button>
+            <div class="section">
+                <h3>👥 Ручная регистрация</h3>
+                <input v-model="manualData.name" placeholder="Имя">
+                <input v-model="manualData.lastname" placeholder="Фамилия">
+                <input v-model="manualData.phone" placeholder="Телефон +7...">
+                <input v-model="manualData.tickets" type="number" placeholder="Билеты" min="1">
+                <button @click="manualRegister" :disabled="!isManualFormValid">➕ Добавить</button>
+            </div>
         </div>
     </div>
 
     <script>
-        const { createApp, ref } = Vue;
+        const { createApp, ref, computed } = Vue;
         const tg = window.Telegram.WebApp;
         
         createApp({
             setup() {
                 const stats = ref(null);
                 const newTicketsAmount = ref('');
+                const loading = ref(false);
+                const message = ref('');
+                const messageType = ref('');
+                
                 const manualData = ref({
                     name: '',
                     lastname: '',
@@ -57,68 +74,148 @@
                     tickets: ''
                 });
 
-                const API_BASE = 'https://847f842ed74e7503abafddb841061f48.serveo.net'; // Замените на ваш URL
+                // ЗАМЕНИТЕ на ваш URL
+                const API_BASE = 'https://847f842ed74e7503abafddb841061f48.serveo.net';
+
+                // Проверка заполненности формы
+                const isManualFormValid = computed(() => {
+                    return manualData.value.name && 
+                           manualData.value.lastname && 
+                           manualData.value.phone && 
+                           manualData.value.tickets;
+                });
+
+                function showMessage(msg, type = 'success') {
+                    message.value = msg;
+                    messageType.value = type;
+                    setTimeout(() => {
+                        message.value = '';
+                    }, 3000);
+                }
 
                 async function loadStats() {
+                    loading.value = true;
                     try {
-                        const response = await fetch(`${API_BASE}/stats?admin_id=${tg.initDataUnsafe.user.id}`);
-                        stats.value = await response.json();
+                        const user = tg.initDataUnsafe?.user;
+                        if (!user) {
+                            showMessage('❌ Пользователь не определен', 'error');
+                            return;
+                        }
+
+                        console.log('🔄 Загрузка статистики...');
+                        const response = await fetch(`${API_BASE}/stats?admin_id=${user.id}`);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        console.log('📊 Получена статистика:', result);
+                        
+                        stats.value = result;
+                        showMessage('✅ Статистика обновлена');
+                        
                     } catch (error) {
-                        console.error('Ошибка:', error);
+                        console.error('❌ Ошибка загрузки статистики:', error);
+                        showMessage(`❌ Ошибка: ${error.message}`, 'error');
+                    } finally {
+                        loading.value = false;
                     }
                 }
 
                 async function updateTickets() {
+                    if (!newTicketsAmount.value) return;
+                    
                     try {
-                        await fetch(`${API_BASE}/update-tickets`, {
+                        const user = tg.initDataUnsafe?.user;
+                        console.log('🔄 Обновление билетов:', newTicketsAmount.value);
+                        
+                        const response = await fetch(`${API_BASE}/update-tickets`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                admin_id: tg.initDataUnsafe.user.id,
+                                admin_id: user?.id,
                                 amount: parseInt(newTicketsAmount.value)
                             })
                         });
+                        
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || 'Ошибка обновления');
+                        }
+                        
+                        const result = await response.json();
+                        console.log('✅ Билеты обновлены:', result);
+                        
                         newTicketsAmount.value = '';
-                        await loadStats(); // Обновляем статистику
+                        showMessage(`✅ ${result.message}`);
+                        await loadStats();
+                        
                     } catch (error) {
-                        console.error('Ошибка:', error);
+                        console.error('❌ Ошибка обновления билетов:', error);
+                        showMessage(`❌ ${error.message}`, 'error');
                     }
                 }
 
                 async function manualRegister() {
+                    if (!isManualFormValid.value) return;
+                    
                     try {
-                        await fetch(`${API_BASE}/manual-register`, {
+                        const user = tg.initDataUnsafe?.user;
+                        console.log('👥 Ручная регистрация:', manualData.value);
+                        
+                        const response = await fetch(`${API_BASE}/manual-register`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                admin_id: tg.initDataUnsafe.user.id,
-                                ...manualData.value
+                                admin_id: user?.id,
+                                name: manualData.value.name,
+                                lastname: manualData.value.lastname,
+                                phone: manualData.value.phone,
+                                tickets: parseInt(manualData.value.tickets)
                             })
                         });
+                        
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || 'Ошибка регистрации');
+                        }
+                        
+                        const result = await response.json();
+                        console.log('✅ Пользователь добавлен:', result);
+                        
                         // Очищаем форму
                         manualData.value = { name: '', lastname: '', phone: '', tickets: '' };
-                        await loadStats(); // Обновляем статистику
+                        showMessage(`✅ ${result.message}`);
+                        await loadStats();
+                        
                     } catch (error) {
-                        console.error('Ошибка:', error);
+                        console.error('❌ Ошибка регистрации:', error);
+                        showMessage(`❌ ${error.message}`, 'error');
                     }
                 }
 
+                // Инициализация Telegram Web App
+                tg.expand();
+                tg.ready();
+                
                 // Загружаем статистику при старте
-                loadStats();
+                setTimeout(loadStats, 100);
 
                 return {
                     stats,
                     newTicketsAmount,
                     manualData,
+                    loading,
+                    message,
+                    messageType,
+                    isManualFormValid,
                     loadStats,
                     updateTickets,
                     manualRegister
                 };
             }
         }).mount('#app');
-
-        tg.expand();
-        tg.ready();
     </script>
 </body>
 </html>
