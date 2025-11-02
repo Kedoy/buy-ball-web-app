@@ -126,15 +126,21 @@
                             })
                         });
                         
+                        console.log('📨 Ответ сервера:', response.status, response.statusText);
+                        
                         if (!response.ok) {
-                            // ПРАВИЛЬНО извлекаем текст ошибки
-                            let errorText;
+                            // ДЕТАЛЬНАЯ ОТЛАДКА
+                            const errorText = await response.text();
+                            console.log('📄 Текст ошибки:', errorText);
+                            
+                            let parsedError;
                             try {
-                                const errorData = await response.json();
-                                errorText = errorData.detail || JSON.stringify(errorData);
+                                parsedError = JSON.parse(errorText);
+                                console.log('🔍 JSON ошибки:', parsedError);
                             } catch {
-                                errorText = await response.text();
+                                console.log('❌ Не JSON ошибка');
                             }
+                            
                             throw new Error(errorText || `HTTP ${response.status}`);
                         }
                         
@@ -146,10 +152,11 @@
                         await loadStats();
                         
                     } catch (error) {
-                        console.error('❌ Ошибка обновления билетов:', error);
-                        showMessage(`❌ ${error.message}`, 'error');
+                        console.error('❌ Полная ошибка обновления билетов:', error);
+                        console.error('❌ Stack:', error.stack);
+                        showMessage(`❌ Ошибка: ${error.message}`, 'error');
                     }
-                }
+                    }
                 
                 async function manualRegister() {
                     if (!isManualFormValid.value) return;
