@@ -127,8 +127,15 @@
                         });
                         
                         if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.detail || 'Ошибка обновления');
+                            // ПРАВИЛЬНО извлекаем текст ошибки
+                            let errorText;
+                            try {
+                                const errorData = await response.json();
+                                errorText = errorData.detail || JSON.stringify(errorData);
+                            } catch {
+                                errorText = await response.text();
+                            }
+                            throw new Error(errorText || `HTTP ${response.status}`);
                         }
                         
                         const result = await response.json();
@@ -143,7 +150,7 @@
                         showMessage(`❌ ${error.message}`, 'error');
                     }
                 }
-
+                
                 async function manualRegister() {
                     if (!isManualFormValid.value) return;
                     
@@ -162,8 +169,15 @@
                         });
                         
                         if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.detail || 'Ошибка регистрации');
+                            // ПРАВИЛЬНО извлекаем текст ошибки
+                            let errorText;
+                            try {
+                                const errorData = await response.json();
+                                errorText = errorData.detail || JSON.stringify(errorData);
+                            } catch {
+                                errorText = await response.text();
+                            }
+                            throw new Error(errorText || `HTTP ${response.status}`);
                         }
                         
                         const result = await response.json();
