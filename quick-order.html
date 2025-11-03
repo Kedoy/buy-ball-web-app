@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Быстрая покупка билетов</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 400px; 
+            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .user-info { 
+            background: #e8f4fd; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 25px;
+            border-left: 4px solid #0088cc;
+        }
+        button { 
+            background: linear-gradient(135deg, #0088cc, #00aaff);
+            color: white; 
+            padding: 15px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        select { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 15px 0; 
+            border: 2px solid #e1e5e9; 
+            border-radius: 8px; 
+            font-size: 16px;
+        }
+        .message { 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 8px; 
+            text-align: center;
+        }
+        .success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb;
+        }
+        .error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+        }
+        .user-data {
+            margin: 5px 0;
+            padding: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🎫 Быстрая покупка</h2>
+        
+        <div class="user-info" id="userInfo">
+            <div class="loading">
+                <div>🔍 Проверяем ваши данные...</div>
+            </div>
+        </div>
+
+        <form id="orderForm" style="display: none;">
+            <select name="tickets" required>
+                <option value="">Выберите количество билетов</option>
+                <option value="1">1 билет - 500₽</option>
+                <option value="2">2 билета - 1000₽</option>
+                <option value="3">3 билета - 1500₽</option>
+            </select>
+            <button type="submit">✅ Купить билеты</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        const API_BASE = 'https://95c9bad5d9c3ca5896d3010c3121caa1.serveo.net';
+        
+        // Инициализация Telegram Web App
+        tg.expand();
+        tg.ready();
+        tg.enableClosingConfirmation();
+        
+        // Элементы DOM
+        const userInfo = document.getElementById('userInfo');
+        const orderForm = document.getElementById('orderForm');
+        const resultDiv = document.getElementById('result');
+
+        // Проверка пользователя и редирект для гостей
+        async function checkUserAndRedirect() {
+            const tgUser = tg.initDataUnsafe?.user;
+            
+            if (!tgUser || !tgUser.id) {
+                userInfo.innerHTML = `
+                    <div class="error">
+                        ❌ Не удалось получить данные пользователя<br>
+                        <small>Перенаправляем на форму регистрации...</small>
+                    </div>
+                `;
+                setTimeout(() => window.location.href = 'index.html', 2000);
+                return;
+            }
+            
+            try {
+                userInfo.innerHTML = `
+                    <div class="loading">
+                        <div>🔍 Ищем ваши данные в системе...</div>
+                    </div>
+                `;
+
+                const response = await fetch(`${API_BASE}/check-user/${tgUser.id}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Ошибка сервера: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.exists) {
+                    userInfo.innerHTML = `
+                        <div class="error">
+                            ❌ Вы не зарегистрированы в системе<br>
+                            <small>Перенаправляем на форму регистрации...</small>
+                        </div>
+                    `;
+                    setTimeout(() => window.location.href = 'index.html', 2000);
+                    return;
+                }
+
+                // Пользователь существует - показываем его данные и форму
+                userInfo.innerHTML = `
+                    <strong>👋 С возвращением!</strong><br>
+                    <div class="user-data">👤 <strong>${data.user_data.name} ${data.user_data.lastname}</strong></div>
+                    <div class="user-data">📞 <strong>${data.user_data.phone}</strong></div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                        Вы можете быстро купить билеты без ввода данных
+                    </div>
+                `;
+                
+                orderForm.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Ошибка проверки пользователя:', error);
+                userInfo.innerHTML = `
+                    <div class="error">
+                        ❌ Ошибка загрузки данных<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Обработка формы заказа
+        orderForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const tgUser = tg.initDataUnsafe?.user;
+            const tickets = parseInt(formData.get('tickets'));
+            
+            if (!tickets || tickets < 1) {
+                showResult('❌ Выберите количество билетов', 'error');
+                return;
+            }
+
+            const orderData = {
+                tickets: tickets,
+                telegram_id: tgUser.id,
+                username: tgUser.username || ''
+            };
+
+            try {
+                showResult('<div class="loading">📨 Отправляем заказ...</div>', '');
+                
+                const response = await fetch(`${API_BASE}/order-tickets`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(orderData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(`
+                        <div class="success">
+                            ✅ ${result.message}<br>
+                            💸 Сумма: <strong>${result.total_cost}₽</strong><br>
+                            🎫 Билетов: <strong>${tickets}</strong>
+                        </div>
+                    `, 'success');
+                    orderForm.reset();
+                } else {
+                    showResult(`❌ ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка заказа:', error);
+                showResult(`❌ Ошибка сети: ${error.message}`, 'error');
+            }
+        });
+
+        function showResult(message, type) {
+            resultDiv.innerHTML = type ? `<div class="${type}">${message}</div>` : message;
+        }
+
+        // Запускаем проверку при загрузке
+        checkUserAndRedirect();
+    </script>
+</body>
+</html>
